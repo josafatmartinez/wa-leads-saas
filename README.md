@@ -31,7 +31,14 @@ Configuración básica para consumir Supabase desde el cliente:
   - `middleware.ts`: `getMiddlewareSupabaseClient(req)` retorna `{ supabase, response }` para usar en middleware.
 - Wrapper de compatibilidad en `src/lib/supabaseClient.ts` que reexporta `getSupabaseClient`. Ejemplo:
 
-Middleware ya integrado en `src/middleware.ts` para refrescar sesión (`supabase.auth.getSession()`) y propagar cookies. Ajusta `config.matcher` si necesitas excluir rutas.
+Proxy (reemplazo de middleware) ya integrado en `src/proxy.ts` para refrescar sesión (`supabase.auth.getSession()`) y propagar cookies. Ajusta `config.matcher` si necesitas excluir rutas.
+Se protegen rutas no públicas (excepto `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`, `/auth/hash`, `/auth/error`, `/api/public`) redirigiendo a `/login?redirect=<ruta>`.
+
+### Auth UI
+
+- Pages listas: `/login`, `/signup`, `/forgot-password`, `/reset-password`.
+- Supabase auth con email/password (`signInWithPassword`, `signUp`, `resetPasswordForEmail`, `exchangeCodeForSession`, `updateUser`).
+  - Callback servidor en `/auth/callback` (route handler) que intercambia el `code` y redirige según `type/flow` (`signup`→`/welcome`, `recovery`→`/reset-password`, `email_change`→`/settings`, otros→`/dashboard`, respeta `redirect`). Fallback de hash en `/auth/hash`.
 
 ```ts
 import { getSupabaseClient } from "@/utils/supabase/client";
