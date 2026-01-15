@@ -40,6 +40,10 @@ const supabase = getSupabaseClient();
 const { data, error } = await supabase.from("table").select("*");
 ```
 
+## Testing
+
+- Ejecuta `npm test` (Vitest) para correr la suite. Configuración en `vitest.config.ts` con `pool: "threads"` para evitar fallos de workers en Node recientes.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
