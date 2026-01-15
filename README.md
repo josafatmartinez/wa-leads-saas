@@ -20,6 +20,26 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Supabase
+
+Configuración básica para consumir Supabase desde el cliente:
+
+- Copia `.env.example` a `.env.local` y completa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- Utilidades en `src/utils/supabase/*`:
+  - `client.ts`: `getSupabaseClient()` (cache global en dev/hot reload).
+  - `server.ts`: `getServerSupabaseClient()` listo para App Router (cookies).
+  - `middleware.ts`: `getMiddlewareSupabaseClient(req)` retorna `{ supabase, response }` para usar en middleware.
+- Wrapper de compatibilidad en `src/lib/supabaseClient.ts` que reexporta `getSupabaseClient`. Ejemplo:
+
+Middleware ya integrado en `src/middleware.ts` para refrescar sesión (`supabase.auth.getSession()`) y propagar cookies. Ajusta `config.matcher` si necesitas excluir rutas.
+
+```ts
+import { getSupabaseClient } from "@/utils/supabase/client";
+
+const supabase = getSupabaseClient();
+const { data, error } = await supabase.from("table").select("*");
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
