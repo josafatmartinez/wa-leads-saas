@@ -3,6 +3,7 @@ import { getMiddlewareSupabaseClient } from "@/utils/supabase/middleware";
 
 const PUBLIC_PATHS = [
   "/login",
+  "/api/auth/login",
   "/auth/callback",
   "/auth/error",
   "/api/public",
