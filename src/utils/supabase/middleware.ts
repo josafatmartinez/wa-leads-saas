@@ -1,9 +1,9 @@
-import { createServerClient, type SupabaseClient } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { getSupabaseEnv } from "@/utils/supabase/env";
 
 type MiddlewareClientResult = {
-  supabase: SupabaseClient;
+  supabase: ReturnType<typeof createServerClient>;
   response: NextResponse;
 };
 
