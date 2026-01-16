@@ -13,8 +13,8 @@ export async function GET(request: Request) {
   }
 
   const { url: supabaseUrl, anonKey } = getSupabaseEnv();
-  const cookieStore = cookies();
-  let supabaseResponse = NextResponse.next();
+  const cookieStore = await cookies();
+  const supabaseResponse = NextResponse.next();
 
   const supabase = createServerClient(supabaseUrl, anonKey, {
     cookies: {
