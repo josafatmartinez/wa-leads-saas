@@ -1,24 +1,13 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { SidebarNav } from "@/components/sidebar-nav";
 
 type DashboardLayoutProps = {
   children: ReactNode;
 };
 
-export default async function DashboardLayout({ children }: DashboardLayoutProps) {
-  const supabase = await getSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-  const userEmail = data.user?.email ?? "user@company.com";
-
-  async function signOut() {
-    "use server";
-    const supabaseAction = await getSupabaseServerClient();
-    await supabaseAction.auth.signOut();
-    redirect("/login");
-  }
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const userEmail = "user@company.com";
 
   return (
     <div className="app-shell">
@@ -34,16 +23,6 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         </div>
 
         <SidebarNav />
-
-        <div className="sidebar-card mt-auto">
-          <p className="text-sm font-semibold text-white">Upgrade to Pro</p>
-          <p className="mt-2 text-xs text-white/70">
-            Desbloquea reportes y automatizaciones avanzadas.
-          </p>
-          <button className="btn btn--primary mt-4 w-full text-sm" type="button">
-            Upgrade now
-          </button>
-        </div>
       </aside>
 
       <main className="app-main">
@@ -59,11 +38,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             <Link className="btn btn--ghost" href="/dashboard/leads">
               Leads
             </Link>
-            <form action={signOut}>
-              <button className="btn btn--ghost" type="submit">
-                Logout
-              </button>
-            </form>
+            <Link className="btn btn--ghost" href="/login">
+              Logout
+            </Link>
           </div>
         </header>
 

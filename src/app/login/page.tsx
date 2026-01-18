@@ -9,26 +9,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
-    setMessage(null);
-
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, remember }),
-    });
-
-    const data = (await response.json()) as { ok: boolean; message?: string };
-
-    if (!response.ok || !data.ok) {
-      setMessage(data.message || "Error al iniciar sesión.");
-      setIsLoading(false);
-      return;
-    }
 
     router.push("/dashboard/leads");
   };
@@ -103,7 +87,6 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
             </div>
 
             <p className="text-sm text-center text-[var(--muted)]">

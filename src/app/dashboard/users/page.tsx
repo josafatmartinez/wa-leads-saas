@@ -1,14 +1,24 @@
-import { getSupabaseServerClient } from "@/lib/supabase-server";
-
 function formatDate(value?: string | null) {
   if (!value) return "N/A";
   return new Date(value).toLocaleString("es-MX");
 }
 
-export default async function UsersPage() {
-  const supabase = await getSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+const MOCK_USER = {
+  id: "user-123",
+  email: "user@company.com",
+  phone: "+52 55 0000 0000",
+  role: "owner",
+  created_at: "2024-09-10T16:00:00.000Z",
+  last_sign_in_at: "2024-10-01T08:15:00.000Z",
+  email_confirmed_at: "2024-09-10T16:10:00.000Z",
+  phone_confirmed_at: null,
+  app_metadata: { provider: "email" },
+  user_metadata: { name: "Default User" },
+  identities: [{ provider: "email", created_at: "2024-09-10T16:00:00.000Z" }],
+};
+
+export default function UsersPage() {
+  const user = MOCK_USER;
 
   return (
     <section className="card">

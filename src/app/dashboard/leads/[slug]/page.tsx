@@ -1,8 +1,5 @@
-import { revalidatePath } from "next/cache";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
-
 type LeadDetailPageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 type LeadRecord = {
@@ -36,40 +33,70 @@ function sanitizePhone(phone: string) {
   return phone.replace(/\D/g, "");
 }
 
+const MOCK_LEADS: LeadRecord[] = [
+  {
+    id: "lead-001",
+    customer_phone: "+52 55 1111 2222",
+    slug: "lead-001",
+    answers: {
+      service: "Campanas Meta",
+      date: "Oct 01, 2024",
+      city: "Ciudad de Mexico",
+      budget: "$25,000 MXN",
+      notes: "Interesado en optimizar conversiones.",
+    },
+    status: "new",
+    last_inbound_at: "2024-10-01T18:45:00.000Z",
+    created_at: "2024-09-30T15:00:00.000Z",
+  },
+  {
+    id: "lead-002",
+    customer_phone: "+52 55 3333 4444",
+    slug: "lead-002",
+    answers: {
+      service: "Automatizacion de ventas",
+      date: "Sep 28, 2024",
+      city: "Guadalajara",
+      budget: "$18,000 MXN",
+      notes: "Solicita demo antes de decidir.",
+    },
+    status: "contacted",
+    last_inbound_at: "2024-09-28T14:30:00.000Z",
+    created_at: "2024-09-27T10:00:00.000Z",
+  },
+  {
+    id: "lead-003",
+    customer_phone: "+52 55 5555 6666",
+    slug: "lead-003",
+    answers: {
+      service: "WhatsApp Business API",
+      date: "Sep 25, 2024",
+      city: "Monterrey",
+      budget: "$40,000 MXN",
+      notes: "Equipo listo para iniciar este mes.",
+    },
+    status: "won",
+    last_inbound_at: "2024-09-25T09:15:00.000Z",
+    created_at: "2024-09-20T12:00:00.000Z",
+  },
+];
+
 export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("conversations")
-    .select("id, customer_phone, slug, answers, status, last_inbound_at, created_at")
-    .eq("tenant_id", "default")
-    .eq("slug", params.slug)
-    .single();
-
-  if (error || !data) {
-    throw new Error(error?.message ?? "Lead no encontrado.");
-  }
-
-  const lead = data as LeadRecord;
-
-  async function updateLead(formData: FormData) {
-    "use server";
-    const supabaseAction = await getSupabaseServerClient();
-    const status = formData.get("status") as string;
-    const notes = (formData.get("notes") as string) || "";
-
-    const answers = lead.answers ?? {};
-    const nextAnswers = { ...answers, notes };
-
-    await supabaseAction
-      .from("conversations")
-      .update({ status, answers: nextAnswers })
-      .eq("id", lead.id);
-
-    revalidatePath(`/dashboard/leads/${lead.slug}`);
-  }
+  const { slug } = await params;
+  const lead =
+    MOCK_LEADS.find((item) => item.slug === slug) ??
+    ({
+      id: "lead-unknown",
+      customer_phone: "+52 55 0000 0000",
+      slug,
+      answers: null,
+      status: "new",
+      last_inbound_at: null,
+      created_at: new Date().toISOString(),
+    } satisfies LeadRecord);
 
   return (
-    <form className="grid gap-6" action={updateLead}>
+    <form className="grid gap-6">
       <section className="card">
         <div className="flex items-center justify-between">
           <div>
@@ -141,7 +168,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
           </div>
         </div>
 
-        <button className="btn btn--secondary mt-6" type="submit">
+        <button className="btn btn--secondary mt-6" type="button">
           Guardar cambios
         </button>
       </section>

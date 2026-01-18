@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 type LeadRow = {
   id: string;
@@ -23,22 +22,38 @@ function formatDate(value: string) {
   });
 }
 
-export default async function LeadsPage() {
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("conversations")
-    .select(
-      "id, customer_phone, slug, answers, status, handoff_to_human, updated_at"
-    )
-    .eq("tenant_id", "default")
-    .order("updated_at", { ascending: false })
-    .limit(50);
+const MOCK_LEADS: LeadRow[] = [
+  {
+    id: "lead-001",
+    customer_phone: "+52 55 1111 2222",
+    slug: "lead-001",
+    answers: { service: "Campanas Meta" },
+    status: "new",
+    handoff_to_human: false,
+    updated_at: "2024-10-01T18:45:00.000Z",
+  },
+  {
+    id: "lead-002",
+    customer_phone: "+52 55 3333 4444",
+    slug: "lead-002",
+    answers: { service: "Automatizacion de ventas" },
+    status: "contacted",
+    handoff_to_human: true,
+    updated_at: "2024-09-28T14:30:00.000Z",
+  },
+  {
+    id: "lead-003",
+    customer_phone: "+52 55 5555 6666",
+    slug: "lead-003",
+    answers: { service: "WhatsApp Business API" },
+    status: "won",
+    handoff_to_human: true,
+    updated_at: "2024-09-25T09:15:00.000Z",
+  },
+];
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const leads = (data ?? []) as LeadRow[];
+export default function LeadsPage() {
+  const leads = MOCK_LEADS;
 
   return (
     <section className="card">
