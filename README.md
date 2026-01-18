@@ -20,32 +20,9 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Supabase
+## Frontend only
 
-Configuración básica para consumir Supabase desde el cliente:
-
-- Copia `.env.example` a `.env.local` y completa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-- Utilidades en `src/utils/supabase/*`:
-  - `client.ts`: `getSupabaseClient()` (cache global en dev/hot reload).
-  - `server.ts`: `getServerSupabaseClient()` listo para App Router (cookies).
-  - `middleware.ts`: `getMiddlewareSupabaseClient(req)` retorna `{ supabase, response }` para usar en middleware.
-- Wrapper de compatibilidad en `src/lib/supabaseClient.ts` que reexporta `getSupabaseClient`. Ejemplo:
-
-Proxy (reemplazo de middleware) ya integrado en `src/proxy.ts` para refrescar sesión (`supabase.auth.getSession()`) y propagar cookies. Ajusta `config.matcher` si necesitas excluir rutas.
-Se protegen rutas no públicas (excepto `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`, `/auth/hash`, `/auth/error`, `/api/public`) redirigiendo a `/login?redirect=<ruta>`.
-
-### Auth UI
-
-- Pages listas: `/login`, `/signup`, `/forgot-password`, `/reset-password`.
-- Supabase auth con email/password (`signInWithPassword`, `signUp`, `resetPasswordForEmail`, `exchangeCodeForSession`, `updateUser`).
-  - Callback servidor en `/auth/callback` (route handler) que intercambia el `code` y redirige según `type/flow` (`signup`→`/welcome`, `recovery`→`/reset-password`, `email_change`→`/settings`, otros→`/dashboard`, respeta `redirect`). Fallback de hash en `/auth/hash`.
-
-```ts
-import { getSupabaseClient } from "@/utils/supabase/client";
-
-const supabase = getSupabaseClient();
-const { data, error } = await supabase.from("table").select("*");
-```
+Este repositorio mantiene la capa de UI. La integracion de backend/WhatsApp vive en otro proyecto.
 
 ## Testing
 
