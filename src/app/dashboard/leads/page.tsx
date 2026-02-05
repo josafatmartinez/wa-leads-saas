@@ -1,15 +1,6 @@
 import Link from "next/link";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
-
-type LeadRow = {
-  id: string;
-  customer_phone: string;
-  slug: string;
-  answers: Record<string, unknown> | null;
-  status: string;
-  handoff_to_human: boolean;
-  updated_at: string;
-};
+import { fetchLeads } from "@/lib/server-api";
+import type { LeadRow } from "@/lib/types/dashboard";
 
 function getService(answers: Record<string, unknown> | null) {
   return (answers?.service as string | undefined) || "Sin servicio";
@@ -24,21 +15,7 @@ function formatDate(value: string) {
 }
 
 export default async function LeadsPage() {
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("conversations")
-    .select(
-      "id, customer_phone, slug, answers, status, handoff_to_human, updated_at"
-    )
-    .eq("tenant_id", "default")
-    .order("updated_at", { ascending: false })
-    .limit(50);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const leads = (data ?? []) as LeadRow[];
+  const leads = await fetchLeads();
 
   return (
     <section className="card">

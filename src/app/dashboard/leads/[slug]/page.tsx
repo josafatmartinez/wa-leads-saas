@@ -1,18 +1,9 @@
 import { revalidatePath } from "next/cache";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { fetchLeadDetail, updateLeadDetail } from "@/lib/server-api";
+import type { LeadDetail } from "@/lib/types/dashboard";
 
 type LeadDetailPageProps = {
   params: { slug: string };
-};
-
-type LeadRecord = {
-  id: string;
-  customer_phone: string;
-  slug: string;
-  answers: Record<string, unknown> | null;
-  status: string;
-  last_inbound_at: string | null;
-  created_at: string;
 };
 
 const STATUS_OPTIONS = ["new", "contacted", "won", "lost"] as const;
@@ -37,33 +28,17 @@ function sanitizePhone(phone: string) {
 }
 
 export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("conversations")
-    .select("id, customer_phone, slug, answers, status, last_inbound_at, created_at")
-    .eq("tenant_id", "default")
-    .eq("slug", params.slug)
-    .single();
-
-  if (error || !data) {
-    throw new Error(error?.message ?? "Lead no encontrado.");
+  const lead = (await fetchLeadDetail(params.slug)) as LeadDetail | null;
+  if (!lead) {
+    throw new Error("Lead no encontrado.");
   }
-
-  const lead = data as LeadRecord;
 
   async function updateLead(formData: FormData) {
     "use server";
-    const supabaseAction = await getSupabaseServerClient();
     const status = formData.get("status") as string;
     const notes = (formData.get("notes") as string) || "";
 
-    const answers = lead.answers ?? {};
-    const nextAnswers = { ...answers, notes };
-
-    await supabaseAction
-      .from("conversations")
-      .update({ status, answers: nextAnswers })
-      .eq("id", lead.id);
+    await updateLeadDetail(lead.slug, { status, notes });
 
     revalidatePath(`/dashboard/leads/${lead.slug}`);
   }

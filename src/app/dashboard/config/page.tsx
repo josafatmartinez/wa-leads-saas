@@ -1,37 +1,15 @@
-import { revalidatePath } from "next/cache";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
-
-type TenantConfig = {
-  tenant_id: string;
-  bot_enabled: boolean;
-  welcome_text: string | null;
-  closing_text: string | null;
-};
+import { fetchConfig, updateConfig as sendConfigUpdate } from "@/lib/server-api";
 
 export default async function ConfigPage() {
-  const supabase = await getSupabaseServerClient();
-  const { data } = await supabase
-    .from("tenant_config")
-    .select("tenant_id, bot_enabled, welcome_text, closing_text")
-    .eq("tenant_id", "default")
-    .single();
-
-  const config = (data as TenantConfig | null) ?? {
-    tenant_id: "default",
-    bot_enabled: true,
-    welcome_text: "",
-    closing_text: "",
-  };
+  const config = await fetchConfig();
 
   async function updateConfig(formData: FormData) {
     "use server";
-    const supabaseAction = await getSupabaseServerClient();
     const botEnabled = formData.get("bot_enabled") === "on";
     const welcomeText = (formData.get("welcome_text") as string) || "";
     const closingText = (formData.get("closing_text") as string) || "";
 
-    await supabaseAction.from("tenant_config").upsert({
-      tenant_id: "default",
+    await sendConfigUpdate({
       bot_enabled: botEnabled,
       welcome_text: welcomeText,
       closing_text: closingText,

@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { fetchSessionData } from "@/lib/server-api";
 
 function formatDate(value?: string | null) {
   if (!value) return "N/A";
@@ -6,9 +6,16 @@ function formatDate(value?: string | null) {
 }
 
 export default async function UsersPage() {
-  const supabase = await getSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+  let user = null;
+
+  try {
+    const session = await fetchSessionData();
+    if (session.ok) {
+      user = session.user;
+    }
+  } catch {
+    user = null;
+  }
 
   return (
     <section className="card">

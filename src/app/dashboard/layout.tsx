@@ -1,22 +1,29 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { fetchSessionData, signOut as signOutEndpoint } from "@/lib/server-api";
 
 type DashboardLayoutProps = {
   children: ReactNode;
 };
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
-  const supabase = await getSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-  const userEmail = data.user?.email ?? "user@company.com";
+  let userEmail = "user@company.com";
+
+  try {
+    const session = await fetchSessionData();
+    if (!session.ok || !session.user) {
+      redirect("/login");
+    }
+    userEmail = session.user.email ?? userEmail;
+  } catch {
+    redirect("/login");
+  }
 
   async function signOut() {
     "use server";
-    const supabaseAction = await getSupabaseServerClient();
-    await supabaseAction.auth.signOut();
+    await signOutEndpoint();
     redirect("/login");
   }
 
