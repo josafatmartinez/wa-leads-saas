@@ -14,6 +14,33 @@ type TenantConfig = {
   graph_version: string;
 };
 
+const EXPECTED_INTERACTIVE_TYPES = ['interactive', 'button', 'text'] as const;
+
+type WhatsAppInteractiveAction = {
+  button_reply?: { id: string; title: string };
+  list_reply?: { id: string; title: string };
+};
+
+type WhatsAppMessage = {
+  type?: (typeof EXPECTED_INTERACTIVE_TYPES)[number];
+  interactive?: WhatsAppInteractiveAction;
+  button?: { payload?: string; text?: string };
+  text?: { body?: string };
+};
+
+type WhatsAppWebhookValue = {
+  metadata?: { phone_number_id?: string };
+  messages?: WhatsAppMessage[];
+};
+
+type WhatsAppWebhookPayload = {
+  entry?: Array<{
+    changes?: Array<{
+      value?: WhatsAppWebhookValue;
+    }>;
+  }>;
+};
+
 function verifySignature(raw: string, signature?: string | null) {
   const secret = process.env.META_APP_SECRET;
   if (!secret) return true;
@@ -32,12 +59,16 @@ function verifySignature(raw: string, signature?: string | null) {
   return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(expected, 'hex'));
 }
 
-function extractInput(msg: any): { id?: string; text?: string } {
+function extractInput(msg: WhatsAppMessage): { id?: string; text?: string } {
   if (!msg) return {};
   if (msg.type === 'interactive') {
-    const interactive = msg.interactive || {};
-    if (interactive.button_reply) return { id: interactive.button_reply.id, text: interactive.button_reply.title };
-    if (interactive.list_reply) return { id: interactive.list_reply.id, text: interactive.list_reply.title };
+    const interactive = msg.interactive;
+    if (interactive?.button_reply) {
+      return { id: interactive.button_reply.id, text: interactive.button_reply.title };
+    }
+    if (interactive?.list_reply) {
+      return { id: interactive.list_reply.id, text: interactive.list_reply.title };
+    }
   }
   if (msg.type === 'button' && msg.button) {
     return { id: msg.button.payload || msg.button.text, text: msg.button.text };
@@ -117,11 +148,6 @@ async function sendNodePrompt(
     return;
   }
 
-  if (node.type === 'list') {
-    await sendList({ ...cfg, to }, node.text, node.options, node.buttonLabel, node.sectionTitle);
-  }
-}
-
 export async function GET(req: NextRequest) {
   const search = req.nextUrl.searchParams;
   const mode = search.get('hub.mode');
@@ -147,7 +173,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body: any = JSON.parse(rawBody);
+    const body = JSON.parse(rawBody) as WhatsAppWebhookPayload;
 
     const value = body?.entry?.[0]?.changes?.[0]?.value;
     const msg = value?.messages?.[0];
