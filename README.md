@@ -20,32 +20,34 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Supabase
+## API-first dashboard data
 
-Configuración básica para consumir Supabase desde el cliente:
+El dashboard ya no consulta Supabase desde los componentes. En su lugar se comunica con un endpoint centralizado (por defecto `/api/*` en esta app) y puede apuntar a un servidor remoto durante el desarrollo agregando `NEXT_PUBLIC_WA_LEADS_API_URL=https://wa-leads-api.onrender.com` al `.env.local`. En producción o cuando esta variable está vacía se usa `NEXT_PUBLIC_APP_URL` para construir las rutas internas; en desarrollo el `server-api` detecta el override y reenvía todas las llamadas a `https://wa-leads-api.onrender.com`.
 
-- Copia `.env.example` a `.env.local` y completa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-- Utilidades en `src/utils/supabase/*`:
-  - `client.ts`: `getSupabaseClient()` (cache global en dev/hot reload).
-  - `server.ts`: `getServerSupabaseClient()` listo para App Router (cookies).
-  - `middleware.ts`: `getMiddlewareSupabaseClient(req)` retorna `{ supabase, response }` para usar en middleware.
-- Wrapper de compatibilidad en `src/lib/supabaseClient.ts` que reexporta `getSupabaseClient`. Ejemplo:
+Los endpoints disponibles son:
 
-Proxy (reemplazo de middleware) ya integrado en `src/proxy.ts` para refrescar sesión (`supabase.auth.getSession()`) y propagar cookies. Ajusta `config.matcher` si necesitas excluir rutas.
-Se protegen rutas no públicas (excepto `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`, `/auth/hash`, `/auth/error`, `/api/public`) redirigiendo a `/login?redirect=<ruta>`.
+- `POST /api/auth/login`: recibe email/contraseña, delega en Supabase y devuelve `supabase-auth-token` vía cookies
+- `POST /api/auth/logout`: invalida la sesión (llama a `supabase.auth.signOut`)
+- `GET /api/auth/session`: obtiene el usuario autenticado (usa `supabase.auth.getUser`)
+- `GET /api/dashboard/leads`: devuelve los últimos leads del tenant `default`
+- `GET /api/dashboard/leads/[slug]`: devuelve detalles del lead identificado por `slug`
+- `PATCH /api/dashboard/leads/[slug]`: actualiza el `status` y las `notes` internas
+- `GET /api/dashboard/config`: lee la configuración del bot y aplica valores por defecto
+- `PATCH /api/dashboard/config`: persiste `bot_enabled`, `welcome_text` y `closing_text`
+
+El helper `src/lib/server-api.ts` provee funciones reutilizables (fetchers, actualizaciones, sesión) que incluyen las cookies actuales y devuelven los JSON de los endpoints. Está pensado para usarse desde componentes Server y App Actions.
+
+### Invitaciones y reset
+
+Supabase redirige las invitaciones con el `access_token` en el hash (`/#access_token=...`). El cliente ahora expone `/auth/hash`, que captura ese hash, llama a `POST /api/auth/session` para crear la sesión en el servidor y redirige automáticamente a `/reset-password`, la pantalla donde el usuario actualiza su contraseña vía `POST /api/auth/password`.
+
+El middleware `/src/proxy.ts` aún refresca la sesión con Supabase y protege `/dashboard` (p. ej. redirige a `/login` si no hay `session`) para que la zona privada sólo se renderice cuando hay una sesión activa.
 
 ### Auth UI
 
-- Pages listas: `/login`, `/signup`, `/forgot-password`, `/reset-password`.
-- Supabase auth con email/password (`signInWithPassword`, `signUp`, `resetPasswordForEmail`, `exchangeCodeForSession`, `updateUser`).
-  - Callback servidor en `/auth/callback` (route handler) que intercambia el `code` y redirige según `type/flow` (`signup`→`/welcome`, `recovery`→`/reset-password`, `email_change`→`/settings`, otros→`/dashboard`, respeta `redirect`). Fallback de hash en `/auth/hash`.
-
-```ts
-import { getSupabaseClient } from "@/utils/supabase/client";
-
-const supabase = getSupabaseClient();
-const { data, error } = await supabase.from("table").select("*");
-```
+- Páginas disponibles: `/login`, `/signup`, `/forgot-password`, `/reset-password`.
+- El login del cliente sigue enviando credenciales a `/api/auth/login`, que propaga cookies `supabase-auth-token` y `supabase-auth-refresh-token`.
+- El signup se sigue manejando con la integración existente de Supabase (requiere que las rutas de autenticación definan `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` junto con las llaves de servicio).
 
 ## Testing
 
