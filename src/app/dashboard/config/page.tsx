@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { fetchConfig, updateConfig as sendConfigUpdate } from "@/lib/server-api";
 
 export default async function ConfigPage() {
