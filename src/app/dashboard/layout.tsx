@@ -41,16 +41,6 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         </div>
 
         <SidebarNav />
-
-        <div className="sidebar-card mt-auto">
-          <p className="text-sm font-semibold text-white">Upgrade to Pro</p>
-          <p className="mt-2 text-xs text-white/70">
-            Desbloquea reportes y automatizaciones avanzadas.
-          </p>
-          <button className="btn btn--primary mt-4 w-full text-sm" type="button">
-            Upgrade now
-          </button>
-        </div>
       </aside>
 
       <main className="app-main">
@@ -66,8 +56,8 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             <Link className="btn btn--ghost" href="/dashboard/leads">
               Leads
             </Link>
-            <form action={signOut}>
-              <button className="btn btn--ghost" type="submit">
+            <form action={signOut} method="post">
+              <button type="submit" className="btn btn--ghost">
                 Logout
               </button>
             </form>

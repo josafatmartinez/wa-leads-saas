@@ -39,7 +39,7 @@ export default async function LeadsPage() {
             </tr>
           </thead>
           <tbody>
-            {leads.map((lead) => (
+            {leads.map((lead: LeadRow) => (
               <tr key={lead.id}>
                 <td>
                   <Link
