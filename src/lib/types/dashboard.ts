@@ -42,3 +42,47 @@ export type SessionUser = {
 export type SessionResponse =
   | { ok: true; user: SessionUser }
   | { ok: false; error?: string };
+
+export type Tenant = {
+  id: string;
+  name?: string;
+  created_at?: string;
+};
+
+export type TenantResponse =
+  | { ok: true; tenant: Tenant | null }
+  | { ok: false; error?: string };
+
+export type TenantWhatsappStatus = {
+  configured: boolean;
+  tenant_id?: string;
+  phone_number_id?: string;
+};
+
+export type TenantTreeStatus = {
+  configured: boolean;
+  tenant_id?: string;
+  name?: string;
+  version?: string;
+  tree?: Record<string, unknown>;
+};
+
+export type TenantMember = {
+  id: string;
+  tenant_id?: string;
+  supabase_user_id: string;
+  role: "tenant_admin" | "agent" | "viewer";
+  created_at?: string;
+};
+
+export type TenantInvitation = {
+  id: string;
+  tenant_id: string;
+  email: string;
+  role: "tenant_admin" | "agent" | "viewer";
+  status: "pending" | "accepted" | "revoked" | "expired";
+  invited_by: string;
+  expires_at: string;
+  accepted_at?: string | null;
+  created_at: string;
+};
