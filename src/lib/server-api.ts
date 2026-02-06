@@ -1,15 +1,20 @@
 import { getAppUrl } from "@/lib/utils";
 import { getCookieHeader } from "@/lib/server-cookies";
-import type { LeadRow, LeadDetail, TenantConfig, SessionResponse } from "@/lib/types/dashboard";
+import type {
+  LeadRow,
+  LeadDetail,
+  TenantConfig,
+  SessionResponse,
+  TenantResponse,
+  TenantWhatsappStatus,
+  TenantTreeStatus,
+} from "@/lib/types/dashboard";
 
 const ensureLeadingSlash = (value: string) => (value.startsWith("/") ? value : `/${value}`);
 
-const REMOTE_API_URL = process.env.NEXT_PUBLIC_WA_LEADS_API_URL;
-
 function getApiBaseUrl() {
-  if (REMOTE_API_URL && REMOTE_API_URL.trim().length > 0) {
-    return REMOTE_API_URL.replace(/\/$/, "");
-  }
+  // Always call this app's BFF routes from server components/actions.
+  // BFF routes attach Authorization from httpOnly cookies before calling backend APIs.
   return getAppUrl().replace(/\/$/, "");
 }
 
@@ -17,7 +22,7 @@ async function internalFetch(path: string, init: RequestInit = {}) {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${ensureLeadingSlash(path)}`;
   const headers = new Headers(init.headers);
-  const cookieHeader = getCookieHeader();
+  const cookieHeader = await getCookieHeader();
   if (cookieHeader) {
     headers.set("cookie", cookieHeader);
   }
@@ -46,12 +51,70 @@ async function internalFetchJson<T>(path: string, init: RequestInit = {}) {
 }
 
 export async function fetchSessionData() {
-  return internalFetchJson<SessionResponse>("/api/auth/session");
+  try {
+    return await internalFetchJson<SessionResponse>("/api/auth/session");
+  } catch {
+    return { ok: false, error: "No active session" } satisfies SessionResponse;
+  }
 }
 
 export async function signOut() {
   await internalFetch("/api/auth/logout", {
     method: "POST",
+  });
+}
+
+export async function fetchTenant() {
+  try {
+    return await internalFetchJson<TenantResponse>("/api/tenant");
+  } catch {
+    return { ok: false, error: "Tenant request failed" } satisfies TenantResponse;
+  }
+}
+
+export async function upsertTenant(body: { name: string }) {
+  return internalFetchJson<TenantResponse>("/api/tenant", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchTenantWhatsappStatus() {
+  try {
+    return await internalFetchJson<{ ok: boolean; whatsapp: TenantWhatsappStatus }>("/api/tenant/whatsapp");
+  } catch {
+    return { ok: false, whatsapp: { configured: false } };
+  }
+}
+
+export async function updateTenantWhatsapp(body: Record<string, unknown>) {
+  return internalFetchJson<{ ok: boolean; whatsapp?: TenantWhatsappStatus }>("/api/tenant/whatsapp", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchTenantTreeStatus() {
+  try {
+    return await internalFetchJson<{ ok: boolean; tree: TenantTreeStatus }>("/api/tenant/tree");
+  } catch {
+    return { ok: false, tree: { configured: false } };
+  }
+}
+
+export async function updateTenantTree(body: { tree: Record<string, unknown>; name?: string; version?: string }) {
+  return internalFetchJson<{ ok: boolean; tree?: TenantTreeStatus }>("/api/tenant/tree", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
   });
 }
 

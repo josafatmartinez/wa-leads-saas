@@ -1,97 +1,77 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { forwardJsonBody, forwardToBackend, withApiPrefix } from "@/lib/backend-api";
 
-const TENANT_ID = "default";
+async function resolveTenantId(request: NextRequest) {
+  if (process.env.WA_LEADS_TENANT_ID) return process.env.WA_LEADS_TENANT_ID;
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: { slug: string } }
-) {
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("conversations")
-    .select("id, customer_phone, slug, answers, status, last_inbound_at, created_at")
-    .eq("tenant_id", TENANT_ID)
-    .eq("slug", params.slug)
-    .limit(1)
-    .maybeSingle();
+  const upstream = await fetch(new URL("/api/tenant", request.url), {
+    method: "GET",
+    headers: {
+      cookie: request.headers.get("cookie") ?? "",
+      ...(request.headers.get("authorization")
+        ? { authorization: request.headers.get("authorization") as string }
+        : {}),
+    },
+    cache: "no-store",
+  });
 
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: error.message },
-      { status: 500 }
-    );
-  }
-
-  if (!data) {
-    return NextResponse.json(
-      { ok: false, error: "Lead not found" },
-      { status: 404 }
-    );
-  }
-
-  return NextResponse.json({ ok: true, lead: data });
+  if (!upstream.ok) return null;
+  const payload = await upstream.json().catch(() => null);
+  return payload?.tenant?.id || null;
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { slug: string } }
-) {
-  const supabase = await getSupabaseServerClient();
-  const { status, notes } = (await request.json()) as {
-    status?: string;
-    notes?: string;
+type RouteContext = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function GET(request: NextRequest, context: RouteContext) {
+  const { slug } = await context.params;
+  const tenantId = await resolveTenantId(request);
+  if (!tenantId) {
+    return NextResponse.json({ ok: false, error: "Tenant not configured" }, { status: 400 });
+  }
+
+  const upstream = await forwardToBackend(
+    request,
+    withApiPrefix(`/api/tenants/${encodeURIComponent(tenantId)}/conversations/${encodeURIComponent(slug)}`),
+    { method: "GET" }
+  );
+
+  if (!upstream.ok) {
+    const error = await upstream.text();
+    return NextResponse.json({ ok: false, error }, { status: upstream.status });
+  }
+
+  const payload = await upstream.json().catch(() => ({}));
+  const conversation = payload?.data?.conversation;
+
+  if (!conversation) {
+    return NextResponse.json({ ok: false, error: "Lead not found" }, { status: 404 });
+  }
+
+  const lead = {
+    id: String(conversation.id || slug),
+    customer_phone: String(conversation.customer_phone || "N/A"),
+    slug: String(conversation.slug || slug),
+    answers: (conversation.answers as Record<string, unknown> | null) || null,
+    status: String(conversation.status || conversation.current_node || "new"),
+    last_inbound_at: (conversation.last_inbound_at as string | null) || null,
+    created_at: String(conversation.created_at || new Date().toISOString()),
   };
 
-  if (!status) {
-    return NextResponse.json(
-      { ok: false, error: "Status is required" },
-      { status: 400 }
-    );
+  return NextResponse.json({ ok: true, lead });
+}
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const { slug } = await context.params;
+  const tenantId = await resolveTenantId(request);
+  if (!tenantId) {
+    return NextResponse.json({ ok: false, error: "Tenant not configured" }, { status: 400 });
   }
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("conversations")
-    .select("id, answers")
-    .eq("tenant_id", TENANT_ID)
-    .eq("slug", params.slug)
-    .limit(1)
-    .maybeSingle();
-
-  if (fetchError) {
-    return NextResponse.json(
-      { ok: false, error: fetchError.message },
-      { status: 500 }
-    );
-  }
-
-  if (!existing) {
-    return NextResponse.json(
-      { ok: false, error: "Lead not found" },
-      { status: 404 }
-    );
-  }
-
-  const answers = (existing.answers as Record<string, unknown>) || {};
-  const nextAnswers = {
-    ...answers,
-    notes:
-      notes ??
-      (typeof answers.notes === "string" ? answers.notes : undefined) ??
-      "",
-  };
-
-  const { error: updateError } = await supabase
-    .from("conversations")
-    .update({ status, answers: nextAnswers })
-    .eq("id", existing.id);
-
-  if (updateError) {
-    return NextResponse.json(
-      { ok: false, error: updateError.message },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({ ok: true });
+  return forwardJsonBody(
+    request,
+    withApiPrefix(`/api/tenants/${encodeURIComponent(tenantId)}/conversations/${encodeURIComponent(slug)}`),
+    "PATCH"
+  );
 }

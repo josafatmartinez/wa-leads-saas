@@ -1,63 +1,88 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
 
-const TENANT_ID = "default";
+const TENANT_ID = process.env.WA_LEADS_TENANT_ID || "default";
+const BOT_ENABLED_COOKIE = "wa_bot_enabled";
+const WELCOME_TEXT_COOKIE = "wa_welcome_text";
+const CLOSING_TEXT_COOKIE = "wa_closing_text";
 
-export async function GET() {
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("tenant_config")
-    .select("tenant_id, bot_enabled, welcome_text, closing_text")
-    .eq("tenant_id", TENANT_ID)
-    .single();
+async function resolveTenantId(request: NextRequest) {
+  if (process.env.WA_LEADS_TENANT_ID) return process.env.WA_LEADS_TENANT_ID;
 
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: error.message },
-      { status: 500 }
-    );
-  }
+  const upstream = await fetch(new URL("/api/tenant", request.url), {
+    method: "GET",
+    headers: {
+      cookie: request.headers.get("cookie") ?? "",
+      ...(request.headers.get("authorization")
+        ? { authorization: request.headers.get("authorization") as string }
+        : {}),
+    },
+    cache: "no-store",
+  });
 
-  const config = data ?? {
-    tenant_id: TENANT_ID,
-    bot_enabled: true,
-    welcome_text: "",
-    closing_text: "",
-  };
+  if (!upstream.ok) return null;
+  const payload = await upstream.json().catch(() => null);
+  return payload?.tenant?.id || null;
+}
 
-  return NextResponse.json({ ok: true, config });
+export async function GET(request: NextRequest) {
+  const tenantId = (await resolveTenantId(request)) || TENANT_ID;
+  const botEnabled = request.cookies.get(BOT_ENABLED_COOKIE)?.value;
+  const welcomeText = request.cookies.get(WELCOME_TEXT_COOKIE)?.value || "";
+  const closingText = request.cookies.get(CLOSING_TEXT_COOKIE)?.value || "";
+
+  return NextResponse.json({
+    ok: true,
+    config: {
+      tenant_id: tenantId,
+      bot_enabled: botEnabled ? botEnabled === "1" : true,
+      welcome_text: welcomeText,
+      closing_text: closingText,
+    },
+  });
 }
 
 export async function PATCH(request: NextRequest) {
-  const supabase = await getSupabaseServerClient();
-  const { bot_enabled, welcome_text, closing_text } = (await request.json()) as {
+  const body = (await request.json().catch(() => ({}))) as {
     bot_enabled?: boolean;
-    welcome_text?: string | null;
-    closing_text?: string | null;
+    welcome_text?: string;
+    closing_text?: string;
   };
 
-  if (bot_enabled === undefined) {
-    return NextResponse.json(
-      { ok: false, error: "bot_enabled is required" },
-      { status: 400 }
-    );
-  }
+  const botEnabled = Boolean(body.bot_enabled);
+  const welcomeText = body.welcome_text || "";
+  const closingText = body.closing_text || "";
 
-  const payload = {
-    tenant_id: TENANT_ID,
-    bot_enabled,
-    welcome_text: welcome_text ?? "",
-    closing_text: closing_text ?? "",
-  };
+  const response = NextResponse.json({
+    ok: true,
+    config: {
+      tenant_id: (await resolveTenantId(request)) || TENANT_ID,
+      bot_enabled: botEnabled,
+      welcome_text: welcomeText,
+      closing_text: closingText,
+    },
+  });
 
-  const { error } = await supabase.from("tenant_config").upsert(payload);
+  response.cookies.set(BOT_ENABLED_COOKIE, botEnabled ? "1" : "0", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  response.cookies.set(WELCOME_TEXT_COOKIE, welcomeText, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  response.cookies.set(CLOSING_TEXT_COOKIE, closingText, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
 
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: error.message },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({ ok: true });
+  return response;
 }

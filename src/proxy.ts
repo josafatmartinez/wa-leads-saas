@@ -1,36 +1,25 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { getMiddlewareSupabaseClient } from "@/utils/supabase/middleware";
+import { NextResponse, type NextRequest } from "next/server";
+import { ACCESS_TOKEN_COOKIE } from "@/lib/backend-api";
 
-const PUBLIC_PATHS = [
-  "/login",
-  "/api/auth/login",
-  "/auth/callback",
-  "/auth/error",
-  "/api/public",
-];
+const PUBLIC_PATHS = ["/login", "/signup", "/reset-password", "/auth/hash"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 }
 
-export async function proxy(request: NextRequest) {
-  const { supabase, response } = getMiddlewareSupabaseClient(request);
-  const { data } = await supabase.auth.getSession(); // refresh session if needed
-
-  if (!data.session && !isPublicPath(request.nextUrl.pathname)) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", request.nextUrl.pathname + request.nextUrl.search);
-    const redirectResponse = NextResponse.redirect(loginUrl);
-
-    // Preserve cookies set by Supabase (if any) on the redirect response
-    response.cookies.getAll().forEach((cookie) =>
-      redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
-    );
-
-    return redirectResponse;
+export function proxy(request: NextRequest) {
+  if (isPublicPath(request.nextUrl.pathname)) {
+    return NextResponse.next();
   }
 
-  return response;
+  const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  if (!token && request.nextUrl.pathname.startsWith("/dashboard")) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", request.nextUrl.pathname + request.nextUrl.search);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

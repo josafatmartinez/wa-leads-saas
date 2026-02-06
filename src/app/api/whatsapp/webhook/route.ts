@@ -14,15 +14,15 @@ type TenantConfig = {
   graph_version: string;
 };
 
-const EXPECTED_INTERACTIVE_TYPES = ['interactive', 'button', 'text'] as const;
-
 type WhatsAppInteractiveAction = {
   button_reply?: { id: string; title: string };
   list_reply?: { id: string; title: string };
 };
 
 type WhatsAppMessage = {
-  type?: (typeof EXPECTED_INTERACTIVE_TYPES)[number];
+  from?: string;
+  id?: string;
+  type?: 'interactive' | 'button' | 'text';
   interactive?: WhatsAppInteractiveAction;
   button?: { payload?: string; text?: string };
   text?: { body?: string };
@@ -148,6 +148,14 @@ async function sendNodePrompt(
     return;
   }
 
+  if (node.type === 'list') {
+    await sendList({ ...cfg, to }, node.text, node.options);
+    return;
+  }
+
+  await sendText({ ...cfg, to }, 'No pude procesar tu solicitud. Intenta de nuevo.');
+}
+
 export async function GET(req: NextRequest) {
   const search = req.nextUrl.searchParams;
   const mode = search.get('hub.mode');
@@ -186,12 +194,13 @@ export async function POST(req: NextRequest) {
     const messageId = msg.id as string | undefined;
     const phoneNumberId = value?.metadata?.phone_number_id as string | undefined;
 
-    const { data: tenantRow, error: tenantError } = await supabaseAdmin
+    const { data: tenantData, error: tenantError } = await supabaseAdmin
       .from('tenant_whatsapp')
       .select('*')
       .eq('phone_number_id', phoneNumberId || '')
       .limit(1)
       .maybeSingle();
+    const tenantRow = tenantData as unknown as Partial<TenantConfig> | null;
 
     if (tenantError) {
       console.error('Failed to load tenant row', tenantError);
@@ -219,19 +228,26 @@ export async function POST(req: NextRequest) {
 
       const { error: insertDedupeError } = await supabaseAdmin
         .from('wa_inbound_dedupe')
-        .insert({ id: messageId, tenant_id: tenantId });
+        .insert({ id: messageId, tenant_id: tenantId } as never);
       if (insertDedupeError) {
         console.error('Failed to insert dedupe', insertDedupeError);
       }
     }
 
-    const { data: conversation, error: conversationError } = await supabaseAdmin
+    const { data: conversationData, error: conversationError } = await supabaseAdmin
       .from('conversations')
       .select('id, current_node, answers, slug, handoff_to_human')
       .eq('tenant_id', tenantId)
       .eq('customer_phone', from)
       .limit(1)
       .maybeSingle();
+    const conversation = conversationData as unknown as {
+      id?: string;
+      current_node?: string;
+      answers?: Record<string, unknown> | null;
+      slug?: string | null;
+      handoff_to_human?: boolean;
+    } | null;
 
     if (conversationError) {
       console.error('Failed to load conversation', conversationError);
@@ -266,7 +282,7 @@ export async function POST(req: NextRequest) {
 
     const { error: upsertError } = await supabaseAdmin
       .from('conversations')
-      .upsert(upsertPayload, { onConflict: 'tenant_id,customer_phone' });
+      .upsert(upsertPayload as never, { onConflict: 'tenant_id,customer_phone' });
 
     if (upsertError) {
       console.error('Failed to upsert conversation', upsertError);

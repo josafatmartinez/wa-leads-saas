@@ -1,25 +1,58 @@
-import { NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { NextRequest, NextResponse } from "next/server";
+import { forwardToBackend, withApiPrefix } from "@/lib/backend-api";
 
-const TENANT_ID = "default";
+async function resolveTenantId(request: NextRequest) {
+  if (process.env.WA_LEADS_TENANT_ID) return process.env.WA_LEADS_TENANT_ID;
 
-export async function GET() {
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("conversations")
-    .select(
-      "id, customer_phone, slug, answers, status, handoff_to_human, updated_at"
-    )
-    .eq("tenant_id", TENANT_ID)
-    .order("updated_at", { ascending: false })
-    .limit(50);
+  const upstream = await fetch(new URL("/api/tenant", request.url), {
+    method: "GET",
+    headers: {
+      cookie: request.headers.get("cookie") ?? "",
+      ...(request.headers.get("authorization")
+        ? { authorization: request.headers.get("authorization") as string }
+        : {}),
+    },
+    cache: "no-store",
+  });
 
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: error.message },
-      { status: 500 }
-    );
+  if (!upstream.ok) return null;
+  const payload = await upstream.json().catch(() => null);
+  return payload?.tenant?.id || null;
+}
+
+export async function GET(request: NextRequest) {
+  const tenantId = await resolveTenantId(request);
+  if (!tenantId) {
+    return NextResponse.json({ ok: false, error: "Tenant not configured" }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true, leads: data ?? [] });
+  const upstream = await forwardToBackend(
+    request,
+    withApiPrefix(`/api/tenants/${encodeURIComponent(tenantId)}/conversations?limit=50&offset=0`),
+    { method: "GET" }
+  );
+
+  if (!upstream.ok) {
+    const error = await upstream.text();
+    return NextResponse.json({ ok: false, error }, { status: upstream.status });
+  }
+
+  const payload = await upstream.json().catch(() => ({}));
+  const conversations =
+    payload?.data?.conversations ||
+    payload?.data?.items ||
+    payload?.conversations ||
+    [];
+
+  const leads = conversations.map((conversation: Record<string, unknown>) => ({
+    id: String(conversation.id || conversation.slug || conversation.customer_phone || crypto.randomUUID()),
+    customer_phone: String(conversation.customer_phone || "N/A"),
+    slug: String(conversation.slug || conversation.customer_phone || "unknown"),
+    answers: (conversation.answers as Record<string, unknown> | null) || null,
+    status: String(conversation.status || conversation.current_node || "new"),
+    handoff_to_human: Boolean(conversation.handoff_to_human),
+    updated_at: String(conversation.updated_at || conversation.created_at || new Date().toISOString()),
+  }));
+
+  return NextResponse.json({ ok: true, leads });
 }
