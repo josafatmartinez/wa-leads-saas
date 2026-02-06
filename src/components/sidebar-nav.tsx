@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { label: "Leads", href: "/dashboard/leads", badge: "3" },
+  { label: "Leads", href: "/dashboard/leads", badge: "Live" },
   { label: "Configuración", href: "/dashboard/config" },
   { label: "Usuarios", href: "/dashboard/users" },
 ];
@@ -24,7 +24,7 @@ export function SidebarNav() {
           >
             <span>{item.label}</span>
             {item.badge ? (
-              <span className="ml-auto rounded-full bg-[var(--accent-lime)] px-2 py-0.5 text-[10px] font-semibold text-black">
+              <span className="ml-auto rounded-full bg-[var(--accent-primary)] px-2 py-0.5 text-[10px] font-semibold text-black">
                 {item.badge}
               </span>
             ) : null}

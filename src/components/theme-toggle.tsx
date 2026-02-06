@@ -11,17 +11,14 @@ const OPTIONS: { value: ThemeOption; label: string }[] = [
 ];
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<ThemeOption>("system");
+  const [theme, setTheme] = useState<ThemeOption>(() => getInitialTheme());
 
   useEffect(() => {
-    const initial = getInitialTheme();
-    setTheme(initial);
-    applyTheme(initial);
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
   const handleChange = (next: ThemeOption) => {
     setTheme(next);
-    applyTheme(next);
   };
 
   return (

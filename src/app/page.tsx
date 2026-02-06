@@ -2,17 +2,22 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="page">
+    <div className="auth-shell">
       <div className="page__content">
         <div className="card">
-          <p className="text-xs uppercase tracking-[0.4em] muted">WA Leads</p>
-          <h1 className="mt-2 text-3xl font-semibold">Dashboard interno</h1>
+          <p className="section-kicker">WA Leads</p>
+          <h1 className="mt-2 text-3xl font-semibold">Dashboard comercial</h1>
           <p className="mt-2 text-sm muted">
-            Administra leads de WhatsApp y cierra ventas manualmente.
+            Administra leads de WhatsApp, asigna seguimiento y cierra ventas.
           </p>
-          <Link className="btn btn--primary mt-6 inline-flex" href="/login">
-            Ir a login
-          </Link>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link className="btn btn--primary inline-flex" href="/login">
+              Iniciar sesión
+            </Link>
+            <Link className="btn btn--ghost inline-flex" href="/signup">
+              Crear cuenta
+            </Link>
+          </div>
         </div>
       </div>
     </div>

@@ -1,104 +1,41 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Alert } from "@/components/ui/alert";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
-type Status = { type: "idle" } | { type: "loading" } | { type: "success" } | { type: "error"; message: string };
+import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [status, setStatus] = useState<Status>({ type: "idle" });
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (password.length < 8) {
-      setStatus({ type: "error", message: "La contraseña debe tener al menos 8 caracteres." });
-      return;
-    }
-
-    if (password !== confirm) {
-      setStatus({ type: "error", message: "Las contraseñas no coinciden." });
-      return;
-    }
-
-    setStatus({ type: "loading" });
-    const response = await fetch("/api/auth/password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-
-    const payload = await response.json();
-    if (!response.ok || !payload.ok) {
-      setStatus({
-        type: "error",
-        message: payload.error || "No se pudo actualizar la contraseña.",
-      });
-      return;
-    }
-
-    setStatus({ type: "success" });
-    router.replace("/dashboard/leads");
-  };
-
   return (
-    <div className="min-h-screen gradient-bg flex items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md p-2 sm:p-3">
-        <CardHeader className="text-center">
-          <p className="text-sm uppercase tracking-[0.4em] text-[var(--muted)]">WA Leads</p>
-          <CardTitle>Actualiza tu contraseña</CardTitle>
-          <CardDescription>
-            Ingresa una nueva contraseña para continuar con tu sesión.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {status.type === "loading" && (
-            <Alert>Actualizando contraseña...</Alert>
-          )}
-          {status.type === "error" && <Alert variant="destructive">{status.message}</Alert>}
-          {status.type === "success" && (
-            <Alert variant="success">Contraseña actualizada. Redirigiendo...</Alert>
-          )}
+    <div className="auth-shell">
+      <div className="auth-grid">
+        <section className="auth-panel">
+          <div className="auth-brand">
+            <span className="auth-brand__dot" />
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
+              WA Leads
+            </p>
+          </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label className="text-sm font-semibold">Nueva contraseña</label>
-              <input
-                className="input mt-2"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                minLength={8}
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-semibold">Confirma la contraseña</label>
-              <input
-                className="input mt-2"
-                type="password"
-                value={confirm}
-                onChange={(event) => setConfirm(event.target.value)}
-                minLength={8}
-                required
-              />
-            </div>
-            <button className="btn btn--primary w-full" type="submit">
-              {status.type === "loading" ? "Actualizando..." : "Guardar contraseña"}
-            </button>
-          </form>
-        </CardContent>
-      </Card>
+          <div>
+            <p className="section-kicker">Seguridad</p>
+            <h1 className="section-title">Actualiza tu contraseña</h1>
+            <p className="section-description">
+              Define una nueva contraseña para continuar con tu sesión.
+            </p>
+          </div>
+
+          <ResetPasswordForm />
+        </section>
+
+        <aside className="auth-hero hidden lg:flex">
+          <span className="auth-badge">Acceso protegido</span>
+          <p className="mt-6 text-2xl font-semibold leading-9">
+            Refuerza la seguridad de tu cuenta y vuelve al dashboard sin perder contexto.
+          </p>
+          <ul className="auth-list mt-6">
+            <li>Recomendado: 8+ caracteres</li>
+            <li>Usa una clave única para tu workspace</li>
+            <li>Actualización inmediata al guardar</li>
+          </ul>
+          <p className="mt-6 text-sm text-white/80">WA Leads SaaS</p>
+        </aside>
+      </div>
     </div>
   );
 }

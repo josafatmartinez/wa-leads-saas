@@ -19,12 +19,17 @@ export default async function LeadsPage() {
 
   return (
     <section className="card">
-      <div className="flex items-center justify-between">
+      <div className="section-header">
         <div>
-          <p className="text-xs uppercase tracking-[0.4em] muted">Leads</p>
-          <h1 className="mt-2 text-2xl font-semibold">Últimos leads</h1>
+          <p className="section-kicker">Leads</p>
+          <h1 className="section-title">Últimos leads</h1>
+          <p className="section-description">
+            Gestiona conversaciones activas y prioriza con base en el estado actual.
+          </p>
         </div>
-        <span className="muted text-sm">{leads.length} registros</span>
+        <div className="section-actions">
+          <span className="pill">{leads.length} registros</span>
+        </div>
       </div>
 
       <div className="mt-6 overflow-x-auto">
@@ -42,10 +47,7 @@ export default async function LeadsPage() {
             {leads.map((lead: LeadRow) => (
               <tr key={lead.id}>
                 <td>
-                  <Link
-                    href={`/dashboard/leads/${lead.slug}`}
-                    className="text-sm font-semibold"
-                  >
+                  <Link href={`/dashboard/leads/${lead.slug}`} className="text-sm font-semibold hover:underline">
                     {lead.customer_phone}
                   </Link>
                 </td>
@@ -53,7 +55,7 @@ export default async function LeadsPage() {
                 <td>
                   <span className="badge badge--lavender">{lead.status}</span>
                 </td>
-                <td className="text-sm">{lead.handoff_to_human ? "🧑‍💼" : "🤖"}</td>
+                <td className="text-sm">{lead.handoff_to_human ? "Humano" : "Bot"}</td>
                 <td className="muted text-sm">{formatDate(lead.updated_at)}</td>
               </tr>
             ))}
