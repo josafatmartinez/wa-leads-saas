@@ -52,6 +52,9 @@ El middleware `/src/proxy.ts` aún refresca la sesión con Supabase y protege `/
 ## Testing
 
 - Ejecuta `npm test` (Vitest) para correr la suite. Configuración en `vitest.config.ts` con `pool: "threads"` para evitar fallos de workers en Node recientes.
+- Flujo E2E de onboarding + invitación: `npm run test:e2e`.
+  Requiere app corriendo en `E2E_BASE_URL` (por defecto `http://127.0.0.1:3000`) y backend/API accesible.
+  Variables opcionales: `E2E_BASE_URL`, `E2E_PASSWORD`.
 
 ## Learn More
 
